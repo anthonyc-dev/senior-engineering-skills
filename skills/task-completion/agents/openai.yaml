@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Completion"
+  short_description: "Verify work and report completion evidence"
+  default_prompt: "Use $task-completion to verify this implementation and produce the required completion report."

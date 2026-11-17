@@ -1,0 +1,11 @@
+name: framework_flutter_templates
+description: Standalone analysis and widget-test context for Flutter templates.
+publish_to: none
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

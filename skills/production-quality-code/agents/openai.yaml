@@ -1,0 +1,4 @@
+interface:
+  display_name: "Production Quality Code"
+  short_description: "Apply production engineering quality gates"
+  default_prompt: "Use $production-quality-code to make this implementation production-ready."

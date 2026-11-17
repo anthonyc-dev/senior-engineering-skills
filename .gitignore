@@ -1,0 +1,8 @@
+node_modules/
+npm-debug.log*
+.agents/
+.claude/
+coverage/
+templates/flutter/.dart_tool/
+templates/flutter/build/
+templates/flutter/pubspec.lock

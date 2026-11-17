@@ -1,0 +1,4 @@
+interface:
+  display_name: "OWASP Security Implementation"
+  short_description: "Plan and verify secure software controls"
+  default_prompt: "Use $owasp-security-implementation-plan to threat-model and secure this implementation against applicable OWASP risks."

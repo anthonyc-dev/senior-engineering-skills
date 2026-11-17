@@ -1,0 +1,4 @@
+interface:
+  display_name: "React Component Standards"
+  short_description: "Build maintainable production React components"
+  default_prompt: "Use $react-component-standards to implement or review these React components."

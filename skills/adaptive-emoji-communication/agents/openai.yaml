@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adaptive Emoji Communication"
+  short_description: "Match emojis naturally to tone and task state"
+  default_prompt: "Use $adaptive-emoji-communication to respond with natural emojis that match the tone and task state."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Quality"
+  short_description: "Make code clean, reusable, and maintainable"
+  default_prompt: "Use $code-quality to improve the cleanliness, readability, reuse, and maintainability of this code."
