@@ -5,7 +5,8 @@ import { join, dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { installFramework, skillsArguments } from '../bin/senior-engineering-skills.mjs';
+import { getSupportedAgents } from 'skills';
+import { installFramework, skillsArguments, frameworkAgents } from '../bin/senior-engineering-skills.mjs';
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'full framework fixture '));
@@ -122,4 +123,54 @@ test('CLI help explains both modes and framework requires explicit agents', () =
   const invalid = spawnSync(process.execPath, [cli, 'framework'], { encoding: 'utf8' });
   assert.notEqual(invalid.status, 0);
   assert.match(invalid.stderr, /agent/i);
+});
+
+test('full mode accepts every agent in the pinned registry and deduplicates shared paths', t => {
+  const { source, target } = fixture(t);
+  const registered = getSupportedAgents();
+  const result = installFramework({ source, target, agents: ['*'] });
+  assert.deepEqual([...result.agents].sort(), registered.map(agent => agent.id).sort());
+  for (const agent of registered) {
+    const file = join(target, agent.projectSkillsDir, 'senior-engineering-framework/SKILL.md');
+    assert.ok(existsSync(file), agent.id);
+    assert.match(readFileSync(file, 'utf8'), /project-root.*\.ai\/AGENTS\.md/);
+  }
+  assert.equal(new Set(result.filesToWrite).size, result.filesToWrite.length);
+  assert.equal(installFramework({ source, target, agents: ['*'] }).filesToWrite.length, 0);
+});
+
+test('universal full install gives Codex/shared-skill clients a native framework entry', t => {
+  const { source, target } = fixture(t);
+  installFramework({ source, target, agents: ['universal'] });
+  assert.ok(existsSync(join(target, '.agents/skills/senior-engineering-framework/SKILL.md')));
+  assert.match(readFileSync(join(target, 'AGENTS.md'), 'utf8'), /\.ai\/AGENTS\.md/);
+});
+
+test('custom agents get full guidance and explicit manual activation instructions', t => {
+  const { source, target } = fixture(t);
+  const result = installFramework({ source, target, agents: ['custom'] });
+  assert.ok(existsSync(join(target, '.ai/knowledge/README.md')));
+  assert.ok(result.notes.some(note => /manual/i.test(note)));
+  assert.ok(!existsSync(join(target, '.agents')));
+});
+
+test('existing conflicting native framework skill is never overwritten', t => {
+  const { source, target, write } = fixture(t);
+  const file = join(target, '.agents/skills/senior-engineering-framework/SKILL.md');
+  write(file, 'User-owned framework skill');
+  assert.throws(() => installFramework({ source, target, agents: ['codex'] }), /conflict/i);
+  assert.equal(readFileSync(file, 'utf8'), 'User-owned framework skill');
+  assert.ok(!existsSync(join(target, '.ai')));
+});
+
+test('agent discovery exposes supported project paths and custom option without global paths', () => {
+  const agents = frameworkAgents();
+  assert.ok(agents.some(agent => agent.id === 'codex'));
+  assert.ok(agents.some(agent => agent.id === 'custom'));
+  assert.equal(agents.length, getSupportedAgents().length + 1);
+  assert.ok(agents.every(agent => !Object.hasOwn(agent, 'globalSkillsDir')));
+  const cli = fileURLToPath(new URL('../bin/senior-engineering-skills.mjs', import.meta.url));
+  const result = spawnSync(process.execPath, [cli, 'agents'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).length, agents.length);
 });

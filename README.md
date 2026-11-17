@@ -16,11 +16,11 @@ Choose either installation mode:
 # Skills only: choose skills and target agents
 npx --yes github:anthonyc-dev/senior-engineering-skills skills
 
-# Full framework: all guidance in .ai/, plus Claude Code loading instructions
-npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent claude-code
+# Full framework for Codex: all guidance in .ai/, plus native framework discovery
+npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent codex
 ```
 
-Full mode is project-local and requires an explicit agent selection. Preview with `--dry-run`; see [full-framework installation](#use-the-complete-engineering-framework) for supported agents, preservation rules, and limitations. The direct `npx skills add` commands below remain supported.
+Full mode is project-local and accepts all 79 targets in the pinned installer registry, including Codex, Claude Code, OpenCode, Cline, Cursor, Gemini CLI, and GitHub Copilot. It also offers universal/shared-skill and custom/manual setup. Preview with `--dry-run`; see [full-framework installation](#use-the-complete-engineering-framework) for activation and preservation rules. The direct `npx skills add` commands below remain supported.
 
 Run these commands **from the project that should receive the skills**:
 
@@ -116,9 +116,24 @@ npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent claude
 
 # Or connect both Codex and Claude Code in the same project
 npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent codex --agent claude-code
+
+# Shared Agent Skills clients, including Codex
+npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent universal
+
+# Other registered clients use their own native skills directory
+npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent opencode
+npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent cline
+
+# List every supported ID, project destination, and activation method
+npx --yes github:anthonyc-dev/senior-engineering-skills agents
+
+# Unlisted/file-reading agents: full files plus manual activation instructions
+npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent custom
 ```
 
-Use `--target "<existing-project-directory>"` to choose a different project. Supported full-mode adapters:
+Use `--target "<existing-project-directory>"` to choose a different project. Every registered target receives a native `senior-engineering-framework` skill in its project skill directory. The location comes from the existing pinned `skills` registry rather than a separate copied list. Shared paths are written once. The native skill tells the agent to read project-root `.ai/AGENTS.md` and then load relevant resources; it depends on the accompanying full framework.
+
+Known project-instruction adapters provide an additional loading route:
 
 | Agent | Loading instruction destination |
 | --- | --- |
@@ -128,13 +143,17 @@ Use `--target "<existing-project-directory>"` to choose a different project. Sup
 | `gemini-cli` | `GEMINI.md` |
 | `github-copilot` | `.github/copilot-instructions.md` |
 
+For other registered agents and `universal`, the installer adds the portable root `AGENTS.md` reference alongside the native skill. These agents may discover the skill without automatically reading `AGENTS.md`; ask them to use `senior-engineering-framework` when needed. `custom` copies the framework and adds `AGENTS.md`, then reports that you must configure the unlisted agent to read `.ai/AGENTS.md` manually. No proprietary configuration file is guessed for an unknown client.
+
+To install activation files for every registered target at once, use `--agent '*'`. This creates many agent directories, so preview with `--dry-run` first. Ordinary installations should select only the client(s) you use. `custom` is a separate explicit option and is not included in `'*'`.
+
 The installer copies skills, knowledge, prompts, instructions, rules, standards, workflows, checklists, templates, glossary, adapters, examples, and documentation into `.ai/`. It includes root framework instructions and version information, excluding development tooling, dependencies, Git metadata, private-key/environment file names, and generated Flutter state. It does not install application dependencies, modify the app's package manifest, activate template CI workflows, or execute application scripts.
 
 Existing agent instructions keep their contents; one marked loading block is appended. The block gives existing project instructions precedence and asks the agent to load only relevant guidance. Identical reruns add no duplicate block. Existing different `.ai` files, edited/incomplete managed blocks, non-UTF-8 instruction files, symlink destinations, and overlapping source/destination paths cause a failure before writes. The dedicated Cursor rule refuses an unrelated existing file of the same name.
 
 There is no force or automatic-update option: review and merge conflicting framework versions manually. Files are preflighted and loader replacements use temporary files, but the entire install is not a filesystem transaction. An I/O failure can leave additive `.ai` files; resolve the error and rerun. Avoid concurrent editing during installation. An install lock prevents concurrent instances of this installer; inspect any stale lock before removing it manually. Global installation applies only to skills mode.
 
-From a source checkout, the equivalent local command is `npm run framework -- --agent claude-code --target "<project-directory>"`. Framework mode itself uses Node's standard library and can also run through `node bin/senior-engineering-skills.mjs framework`. Other full-mode agent adapters are not implemented; follow the corresponding manual adapter guide for other clients. The upstream skills-only installer supports additional agents.
+From a source checkout, install dependencies with `npm ci --ignore-scripts`, then use `npm run framework -- --agent codex --target "<project-directory>"` or `node bin/senior-engineering-skills.mjs framework --agent codex`. Full mode uses the pinned registry dependency for project destinations; it does not invoke an agent application or execute project scripts.
 
 For manual setup instead, copy the guidance directories into the project's `.ai/` and reference the framework from the agent's instruction file:
 
@@ -142,7 +161,9 @@ For manual setup instead, copy the guidance directories into the project's `.ai/
 Read and follow `.ai/AGENTS.md`.
 ```
 
-Full mode loads skills through the framework's `.ai/AGENTS.md` protocol; it does not register native `/skill-name` commands. Run skills mode as well if you want the client's native skill discovery or slash commands. There is no need for that second copy when guidance-based loading is sufficient. Installing all files does not mean injecting all documents into every prompt. Actual loading depends on the chosen agent honoring its instruction file.
+Full mode registers the single native `senior-engineering-framework` entry, not all 33 individual skill commands. Run skills mode too if you want each individual skill in the client's native discovery/command list. Installing all framework files does not mean injecting every document into each prompt.
+
+Registry/path support is installation compatibility, not proof that all 79 applications or models follow the instructions. Tests exercise all registry destinations, shared-path deduplication, and safe reruns without launching those clients. An agent must support local skills or be configured to read the guidance. Cloud chatbots with no project file access require a separate upload/context integration; no local installer can force that support.
 
 For Claude Code, add the same instruction to the project's `CLAUDE.md`; see the [Claude Code adapter](adapters/claude-code/README.md). Other clients should use their corresponding guide under [adapters](adapters/). The framework is not restricted to clients that read a root `AGENTS.md` automatically.
 

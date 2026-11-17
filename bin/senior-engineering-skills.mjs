@@ -6,6 +6,7 @@ import { parseArgs } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { isUtf8 } from 'node:buffer';
+import { getSupportedAgents } from 'skills';
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
 const directories = ['skills', 'knowledge', 'prompts', 'instructions', 'rules', 'standards', 'workflows', 'checklists', 'templates', 'glossary', 'adapters', 'examples', 'docs'];
@@ -16,8 +17,46 @@ const loaders = {
 const start = '<!-- senior-engineering-skills:start -->';
 const end = '<!-- senior-engineering-skills:end -->';
 const instruction = 'Read and follow project-root `.ai/AGENTS.md`. Existing project instructions take precedence. Load only task-relevant guidance.';
+const registeredAgents = getSupportedAgents();
+const bootstrap = Buffer.from(`---
+name: senior-engineering-framework
+description: Use when implementing, debugging, testing, reviewing, or planning software changes in this project using its installed full engineering framework.
+---
+
+# Project engineering framework
+
+Read project-root \`.ai/AGENTS.md\` using this agent's file-reading capability before working on the change. The path is relative to the project root, not this skill directory.
+
+Follow existing project instructions first. Use the framework's loading protocol to select relevant skills, knowledge, prompts, rules, standards, workflows, and checklists. Load supporting documents only when needed; do not inject the entire framework into every task.
+
+Templates are adaptation examples, not active application configuration. Do not execute template CI, SQL, deployment, or paid actions merely because the files exist.
+
+If the project framework is missing or file access is unavailable, report that limitation and request the relevant project guidance. Do not claim those instructions were loaded. This bridge depends on the full project-local .ai installation and is not a standalone engineering skill.
+`);
 /** @typedef {{ path: string, content: Buffer, previous: Buffer | null }} Write */
 /** @typedef {{ source?: string, target?: string, agents: string[], dryRun?: boolean }} Options */
+
+/** @param {string} agent */
+function loaderPath(agent) {
+  return Object.hasOwn(loaders, agent) ? loaders[/** @type {keyof typeof loaders} */ (agent)] : 'AGENTS.md';
+}
+
+export function frameworkAgents() {
+  return [
+    ...registeredAgents.map(agent => ({ id: agent.id, name: agent.name, projectSkillsDir: agent.projectSkillsDir, instructionFile: loaderPath(agent.id), activation: 'native framework skill and project instructions' })),
+    { id: 'custom', name: 'Custom agent / manual activation', projectSkillsDir: null, instructionFile: 'AGENTS.md', activation: 'manual: configure the agent to read project-root .ai/AGENTS.md' },
+  ];
+}
+
+/** @param {string[]} agents */
+function selectedAgents(agents) {
+  if (!agents?.length) throw new Error('Framework mode requires --agent. Use universal for shared skills or custom for manual setup.');
+  const selected = [...new Set(agents.flatMap(agent => agent === '*' ? registeredAgents.map(item => item.id) : [agent]))];
+  for (const agent of selected) {
+    if (agent !== 'custom' && !registeredAgents.some(item => item.id === agent)) throw new Error(`Unsupported framework agent: ${agent}. Use agents to list supported IDs, or --agent custom for manual activation.`);
+  }
+  return selected;
+}
 
 /** @param {string} root @param {string} path */
 function inside(root, path) {
@@ -94,8 +133,7 @@ function loaderContent(previous, cursor) {
 
 /** @param {Options} options */
 function plan(options) {
-  if (!options.agents?.length) throw new Error('Framework mode requires --agent.');
-  for (const agent of options.agents) if (!Object.hasOwn(loaders, agent)) throw new Error(`Unsupported framework agent: ${agent}`);
+  const agents = selectedAgents(options.agents);
   const source = realpathSync(resolve(options.source ?? packageRoot));
   const target = realpathSync(resolve(options.target ?? process.cwd()));
   const destination = join(target, '.ai');
@@ -119,12 +157,21 @@ function plan(options) {
   const previousIgnore = existing(target, ignorePath);
   if (previousIgnore && !previousIgnore.equals(ignoreContent)) throw new Error(`Framework file conflict: ${ignorePath}`);
   if (!previousIgnore) writes.push({ path: ignorePath, content: ignoreContent, previous: null });
-  for (const agent of new Set(options.agents)) {
-    const path = join(target, loaders[/** @type {keyof typeof loaders} */ (agent)]);
-    const previous = existing(target, path), content = loaderContent(previous, agent === 'cursor');
+  const instructionFiles = new Map(agents.map(agent => [loaderPath(agent), agent === 'cursor']));
+  const skillDirectories = new Set(registeredAgents.filter(agent => agents.includes(agent.id)).map(agent => agent.projectSkillsDir));
+  for (const directory of skillDirectories) {
+    const path = resolve(target, directory, 'senior-engineering-framework/SKILL.md');
+    const previous = existing(target, path);
+    if (previous && !previous.equals(bootstrap)) throw new Error(`Native framework skill conflict: ${path}. Merge manually; nothing was overwritten.`);
+    if (!previous) writes.push({ path, content: bootstrap, previous });
+  }
+  for (const [file, cursor] of instructionFiles) {
+    const path = join(target, file);
+    const previous = existing(target, path), content = loaderContent(previous, cursor);
     if (content && !content.equals(previous ?? Buffer.alloc(0))) writes.push({ path, content, previous });
   }
-  return { target, writes };
+  const notes = agents.includes('custom') ? ['Custom agent requires manual activation: configure it to read project-root .ai/AGENTS.md; no native adapter is assumed.'] : [];
+  return { target, writes, agents, notes };
 }
 
 /** @param {string} target @param {Write} change */
@@ -146,7 +193,7 @@ function apply(target, change) {
 /** @param {Options} options */
 export function installFramework(options) {
   const prepared = plan(options);
-  const result = { target: prepared.target, dryRun: options.dryRun ?? false, agents: options.agents, filesToWrite: prepared.writes.map(change => relative(prepared.target, change.path).split(sep).join('/')) };
+  const result = { target: prepared.target, dryRun: options.dryRun ?? false, agents: prepared.agents, notes: prepared.notes, filesToWrite: prepared.writes.map(change => relative(prepared.target, change.path).split(sep).join('/')) };
   if (options.dryRun || !prepared.writes.length) return result;
   const lock = join(prepared.target, '.senior-engineering-install.lock');
   const handle = openSync(lock, 'wx');
@@ -162,22 +209,32 @@ export function skillsArguments(args) {
 }
 
 function help() {
-  console.log(`Usage: senior-engineering-skills <framework|skills> [options]
+  console.log(`Usage: senior-engineering-skills <framework|skills|agents> [options]
 
 framework --agent <id> [--agent <id>] [--target <project>] [--dry-run]
   Copy full guidance into .ai/ and append agent loader instructions.
-  Agents: ${Object.keys(loaders).join(', ')}.
+  Supports ${registeredAgents.length} registry targets including Codex; use agents to list IDs.
+  Use --agent universal for shared Agent Skills clients, '*' for all registry targets,
+  or --agent custom for full files plus manual activation instructions.
   Refuses conflicting files. No global mode or automatic overwrite.
 
 skills [upstream options]
   Run pinned Vercel skills installer; root framework guidance is not copied.
   Example: skills --skill '*' --agent claude-code
+
+agents
+  List framework targets, project paths, and activation mechanisms as JSON.
 `);
 }
 
 function main() {
   const [mode, ...args] = process.argv.slice(2);
   if (!mode || mode === '--help' || mode === '-h' || (mode === 'framework' && args.length === 1 && args[0] === '--help')) { help(); return; }
+  if (mode === 'agents') {
+    if (args.length) throw new Error('Usage: senior-engineering-skills agents');
+    console.log(JSON.stringify(frameworkAgents(), null, 2));
+    return;
+  }
   if (mode === 'skills') {
     const cli = fileURLToPath(import.meta.resolve('skills/bin/cli.mjs'));
     const child = spawnSync(process.execPath, [cli, ...skillsArguments(args)], { stdio: 'inherit', windowsHide: true });
@@ -185,7 +242,7 @@ function main() {
     process.exitCode = child.status ?? 1;
     return;
   }
-  if (mode !== 'framework') throw new Error('Choose framework or skills. Use --help for usage.');
+  if (mode !== 'framework') throw new Error('Choose framework, skills, or agents. Use --help for usage.');
   const { values } = parseArgs({ args, options: {
     agent: { type: 'string', multiple: true, short: 'a' }, target: { type: 'string', short: 't' }, 'dry-run': { type: 'boolean' },
   } });
