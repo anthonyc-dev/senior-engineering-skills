@@ -2,6 +2,8 @@
 
 A portable pack of 33 production-oriented agent skills, plus shared rules, workflows, checklists, and domain knowledge. Browse the [skill catalog](skills/README.md).
 
+Works with Agent Skills-compatible clients, including Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot. Installation support does not mean every client has been tested on real coding tasks.
+
 The [template catalog](templates/README.md) contains practical starter files for all nine template categories. Each category documents its prerequisites, destination, safety constraints, and validation steps. Top-level templates are part of the full framework checkout, not individual skill installations.
 
 ## Install skills with Vercel's CLI
@@ -17,19 +19,42 @@ npx skills add anthonyc-dev/senior-engineering-skills --list
 # Choose skills and agents interactively
 npx skills add anthonyc-dev/senior-engineering-skills --copy
 
-# Install the complete pack for Codex in the current project
-npx skills add anthonyc-dev/senior-engineering-skills --skill '*' --agent codex --copy
+# Install every skill and choose the target agents interactively
+npx skills add anthonyc-dev/senior-engineering-skills --skill '*' --copy
 
 # Inspect the installed project skills
 npx skills list
 ```
 
-`--copy` creates independent copies, including each skill's supporting references. Codex reads project skills from `.agents/skills/`. Omit `--agent codex` to choose agents interactively; add `--global` only when you want installation across projects. Review any existing skills with matching names before installing, since installation can replace them.
+`--copy` creates independent copies, including each skill's supporting references. Omit `--agent` to choose agents in an interactive terminal; add `--global` only when you want installation across projects. Review any existing skills with matching names before installing, since installation can replace them.
+
+### Choose your agent explicitly
+
+| Agent | CLI identifier | Project installation directory |
+| --- | --- | --- |
+| Claude Code | `claude-code` | `.claude/skills/` |
+| Codex | `codex` | `.agents/skills/` |
+| Cursor | `cursor` | `.agents/skills/` |
+| Gemini CLI | `gemini-cli` | `.agents/skills/` |
+| GitHub Copilot | `github-copilot` | `.agents/skills/` |
+
+```sh
+# All skills for Claude Code
+npx skills add anthonyc-dev/senior-engineering-skills --skill '*' --agent claude-code --copy
+
+# All skills for Codex
+npx skills add anthonyc-dev/senior-engineering-skills --skill '*' --agent codex --copy
+
+# All skills for Cursor, Gemini CLI, and GitHub Copilot
+npx skills add anthonyc-dev/senior-engineering-skills --skill '*' --agent cursor gemini-cli github-copilot --copy
+```
+
+See the installer's [complete supported-agent list](https://github.com/vercel-labs/skills/blob/main/docs/agents.md) for other clients and destinations. These commands install local coding-agent skills, not skills into a regular Claude web chat. In Claude Code, invoke `/production-quality-code` directly or ask Claude to use the skill when relevant.
 
 For a smaller selection, pass skill names after `--skill`:
 
 ```sh
-npx skills add anthonyc-dev/senior-engineering-skills --skill production-quality-code code-quality owasp-security-implementation-plan task-completion --agent codex --copy
+npx skills add anthonyc-dev/senior-engineering-skills --skill production-quality-code code-quality owasp-security-implementation-plan task-completion --copy
 ```
 
 Some skills ask the agent to use companion skills. The CLI does not automatically resolve these dependencies; see [companion skills](skills/README.md#companion-skills). Install the complete pack when you want every cross-reference available.
@@ -39,10 +64,10 @@ Some skills ask the agent to use companion skills. The CLI does not automaticall
 For a portable senior engineering workflow, install just `production-quality-code`:
 
 ```sh
-npx skills add anthonyc-dev/senior-engineering-skills --skill production-quality-code --agent codex --copy
+npx skills add anthonyc-dev/senior-engineering-skills --skill production-quality-code --copy
 ```
 
-Replace `codex` with your supported agent ID, such as `claude-code`, `cursor`, `gemini-cli`, or `github-copilot`, or omit `--agent` to choose interactively. The skill includes its own workflow, security and evidence gates, failure-case playbook, and optional TypeScript helper. Companion skills and this framework's root instructions are not required for that standalone workflow. In your agent, request: "Use production-quality-code for this change; follow the repository's instructions and report actual validation evidence."
+Choose the agent interactively or append its explicit `--agent` identifier from the table above. The skill includes its own workflow, security and evidence gates, failure-case playbook, and optional TypeScript helper. Companion skills and this framework's root instructions are not required for that standalone workflow. In your agent, request: "Use production-quality-code for this change; follow the repository's instructions and report actual validation evidence."
 
 Vercel's `skills` repository contains mostly TypeScript because it implements a package installer and agent adapters. Its [actual skill instructions remain Markdown](https://github.com/vercel-labs/skills/blob/main/skills/find-skills/SKILL.md). A useful skill combines clear task triggers, executable procedures, concrete examples, and optional tested scripts; rewriting prose as TypeScript cannot force a model to follow it.
 
@@ -61,7 +86,7 @@ If you copy this framework into a different repository under `.ai/`, use that re
 ```sh
 # If the repository contains the existing .ai/ directory
 npx skills add https://github.com/OWNER/REPO/tree/main/.ai --list
-npx skills add https://github.com/OWNER/REPO/tree/main/.ai --skill '*' --agent codex --copy
+npx skills add https://github.com/OWNER/REPO/tree/main/.ai --skill '*' --copy
 ```
 
 For a different repository that also publishes the framework contents at its root, use `npx skills add OWNER/REPO`.
@@ -77,6 +102,8 @@ Read and follow `.ai/AGENTS.md`.
 ```
 
 Preserve existing project instructions. There is no need to install a second copy of the skills when your agent already follows `.ai/AGENTS.md` and its loading protocol.
+
+For Claude Code, add the same instruction to the project's `CLAUDE.md`; see the [Claude Code adapter](adapters/claude-code/README.md). Other clients should use their corresponding guide under [adapters](adapters/). The framework is not restricted to clients that read a root `AGENTS.md` automatically.
 
 ## Skill format
 
