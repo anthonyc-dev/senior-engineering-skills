@@ -8,7 +8,19 @@ The [template catalog](templates/README.md) contains practical starter files for
 
 ## Install skills with Vercel's CLI
 
-Requires Node.js 22.20 or later and npm for `npx`. Installed skills contain Markdown and supporting references, with no runtime dependency on this repository's development tools. The `package.json` here provides pinned validation tools and commands; it is private and is not an npm-published installer. Installation uses Vercel's [`skills` CLI](https://github.com/vercel-labs/skills).
+Requires Node.js 22.20 or later and npm for `npx`. GitHub package execution also requires Git. Installed guidance has no dependency on this repository's development tools. The package stays private to prevent accidental npm registry publication; its binary can run directly from GitHub. Skills-only mode uses Vercel's pinned [`skills` CLI](https://github.com/vercel-labs/skills).
+
+Choose either installation mode:
+
+```sh
+# Skills only: choose skills and target agents
+npx --yes github:anthonyc-dev/senior-engineering-skills skills
+
+# Full framework: all guidance in .ai/, plus Claude Code loading instructions
+npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent claude-code
+```
+
+Full mode is project-local and requires an explicit agent selection. Preview with `--dry-run`; see [full-framework installation](#use-the-complete-engineering-framework) for supported agents, preservation rules, and limitations. The direct `npx skills add` commands below remain supported.
 
 Run these commands **from the project that should receive the skills**:
 
@@ -93,15 +105,44 @@ For a different repository that also publishes the framework contents at its roo
 
 ## Use the complete engineering framework
 
-Installing skills copies their individual directories. It does **not** copy or activate the shared `instructions/`, `rules/`, `standards/`, `workflows/`, or `checklists/` directories.
+Run from the existing project that should receive the framework:
 
-To use those shared policies too, copy `.ai/` into a project and add this to the project's existing root `AGENTS.md`:
+```sh
+# Preview; writes nothing
+npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent claude-code --dry-run
+
+# Install and connect Claude Code
+npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent claude-code
+
+# Or connect both Codex and Claude Code in the same project
+npx --yes github:anthonyc-dev/senior-engineering-skills framework --agent codex --agent claude-code
+```
+
+Use `--target "<existing-project-directory>"` to choose a different project. Supported full-mode adapters:
+
+| Agent | Loading instruction destination |
+| --- | --- |
+| `codex` | `AGENTS.md` |
+| `claude-code` | `CLAUDE.md` |
+| `cursor` | `.cursor/rules/senior-engineering.mdc` with `alwaysApply: true` |
+| `gemini-cli` | `GEMINI.md` |
+| `github-copilot` | `.github/copilot-instructions.md` |
+
+The installer copies skills, knowledge, prompts, instructions, rules, standards, workflows, checklists, templates, glossary, adapters, examples, and documentation into `.ai/`. It includes root framework instructions and version information, excluding development tooling, dependencies, Git metadata, private-key/environment file names, and generated Flutter state. It does not install application dependencies, modify the app's package manifest, activate template CI workflows, or execute application scripts.
+
+Existing agent instructions keep their contents; one marked loading block is appended. The block gives existing project instructions precedence and asks the agent to load only relevant guidance. Identical reruns add no duplicate block. Existing different `.ai` files, edited/incomplete managed blocks, non-UTF-8 instruction files, symlink destinations, and overlapping source/destination paths cause a failure before writes. The dedicated Cursor rule refuses an unrelated existing file of the same name.
+
+There is no force or automatic-update option: review and merge conflicting framework versions manually. Files are preflighted and loader replacements use temporary files, but the entire install is not a filesystem transaction. An I/O failure can leave additive `.ai` files; resolve the error and rerun. Avoid concurrent editing during installation. An install lock prevents concurrent instances of this installer; inspect any stale lock before removing it manually. Global installation applies only to skills mode.
+
+From a source checkout, the equivalent local command is `npm run framework -- --agent claude-code --target "<project-directory>"`. Framework mode itself uses Node's standard library and can also run through `node bin/senior-engineering-skills.mjs framework`. Other full-mode agent adapters are not implemented; follow the corresponding manual adapter guide for other clients. The upstream skills-only installer supports additional agents.
+
+For manual setup instead, copy the guidance directories into the project's `.ai/` and reference the framework from the agent's instruction file:
 
 ```markdown
 Read and follow `.ai/AGENTS.md`.
 ```
 
-Preserve existing project instructions. There is no need to install a second copy of the skills when your agent already follows `.ai/AGENTS.md` and its loading protocol.
+Full mode loads skills through the framework's `.ai/AGENTS.md` protocol; it does not register native `/skill-name` commands. Run skills mode as well if you want the client's native skill discovery or slash commands. There is no need for that second copy when guidance-based loading is sufficient. Installing all files does not mean injecting all documents into every prompt. Actual loading depends on the chosen agent honoring its instruction file.
 
 For Claude Code, add the same instruction to the project's `CLAUDE.md`; see the [Claude Code adapter](adapters/claude-code/README.md). Other clients should use their corresponding guide under [adapters](adapters/). The framework is not restricted to clients that read a root `AGENTS.md` automatically.
 
@@ -124,14 +165,14 @@ Keep required references inside the skill directory so they travel with an indiv
 
 ## Development tools and pre-push checks
 
-From this `.ai` directory (or the repository root if you publish its contents at the root):
+From a complete source checkout (not the guidance-only `.ai/` generated by full mode):
 
 ```sh
 npm ci --ignore-scripts
 npm run check
 ```
 
-Commit `package.json` and `package-lock.json`; do not commit `node_modules/`. Skill consumers using `npx skills add` do not need to run `npm ci` in this repository. No build or npm publication is required before sharing skills on GitHub.
+Commit `package.json` and `package-lock.json`; do not commit `node_modules/`. Consumers do not need the framework's development setup. No build or npm registry publication is required: the `.mjs` binary runs natively from GitHub-installed npm packages. The optional skill helper remains TypeScript outside `node_modules`; the package binary uses checked JavaScript because native TypeScript stripping inside npm dependencies is unsupported.
 
 | Command | Behavior |
 | --- | --- |
@@ -141,7 +182,9 @@ Commit `package.json` and `package-lock.json`; do not commit `node_modules/`. Sk
 | `npm run inspect:project -- "<project-root>"` | Read-only project metadata and configured check suggestions as JSON |
 | `npm test` | Skill/tool regressions plus template completeness, links, TS/TSX syntax, and CI structure |
 | `npm run test:install` | Full/subset installs plus standalone core/helper checks for five agent targets |
-| `npm run check` | Runs metadata validation, TypeScript checking, regression tests, and installation smoke test |
+| `npm run test:package` | Checks actual npm distribution contents and excludes caches/development tests |
+| `npm run framework -- --agent claude-code --target "<project>" --dry-run` | Previews full installation into an existing project |
+| `npm run check` | Runs metadata validation, static type checks, regressions, packaging checks, and installation smoke test |
 | `npm run skills -- add . --list` | Lists this pack through the pinned upstream installer CLI |
 
 The install smoke test creates temporary projects with spaces in their paths, disables CLI telemetry, redirects CLI state to the test directory, and removes test files afterwards. It never requests a global installation. Subprocesses run without a shell and have time limits. After `npm ci`, these checks use local files without fetching remote repositories.

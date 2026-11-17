@@ -102,7 +102,7 @@ Every implementation response must end with the Task Completion Report sections 
 
 When changing the framework itself, including skill metadata, references, catalogs, or its tools:
 
-1. Run commands from the directory containing this file and `package.json`.
+1. These maintenance commands require a source checkout containing `package.json` and the lockfile. A full-framework guidance installation omits development tooling; use the consuming project's checks for application work and a source checkout for framework/tool changes.
 2. Install locked development dependencies with `npm ci --ignore-scripts` when needed.
 3. Run `npm run check` before reporting completion or recommending a push. It validates the pack, runs regression tests, and tests the pinned installer in temporary projects.
 4. Update `skills/README.md` when adding, renaming, or removing skills or changing companion requirements.

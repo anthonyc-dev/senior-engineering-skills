@@ -3,9 +3,11 @@
     "target": "ES2023",
     "module": "NodeNext",
     "strict": true,
+    "allowJs": true,
+    "checkJs": true,
     "noEmit": true,
     "erasableSyntaxOnly": true,
     "types": ["node"]
   },
-  "include": ["skills/production-quality-code/scripts/*.mts"]
+  "include": ["skills/production-quality-code/scripts/*.mts", "bin/*.mjs"]
 }

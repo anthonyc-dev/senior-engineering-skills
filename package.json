@@ -4,6 +4,13 @@
   "private": true,
   "description": "Portable agent skills with local validation and installation checks",
   "type": "module",
+  "bin": {
+    "senior-engineering-skills": "bin/senior-engineering-skills.mjs"
+  },
+  "files": [
+    "bin", "AGENTS.md", "VERSION.md", "adapters", "checklists", "docs", "examples", "glossary",
+    "instructions", "knowledge", "prompts", "rules", "skills", "standards", "templates", "workflows"
+  ],
   "engines": {
     "node": ">=22.20.0"
   },
@@ -12,13 +19,17 @@
     "validate": "node scripts/validate-skills.mjs",
     "typecheck": "tsc --noEmit",
     "inspect:project": "node skills/production-quality-code/scripts/inspect-project.mts",
+    "framework": "node bin/senior-engineering-skills.mjs framework",
     "test": "node --test tests/*.test.mjs",
     "test:install": "node scripts/test-install.mjs",
-    "check": "npm run validate && npm run typecheck && npm test && npm run test:install"
+    "test:package": "node scripts/test-package.mjs",
+    "check": "npm run validate && npm run typecheck && npm test && npm run test:package && npm run test:install"
+  },
+  "dependencies": {
+    "skills": "1.9.0"
   },
   "devDependencies": {
     "@types/node": "22.20.5",
-    "skills": "1.9.0",
     "typescript": "6.0.3",
     "yaml": "2.9.1"
   }
