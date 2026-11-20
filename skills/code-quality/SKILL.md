@@ -5,6 +5,8 @@ description: Improve, refactor, implement, and review code for cleanliness, reus
 
 # Code quality
 
+For self-review, read the final diff alongside related callers, tests and compatibility constraints. Trace failure paths, including invalid input, legacy data and partial operations. For each actionable finding, name the severity, affected file, concrete impact and smallest justified correction. Label your own pass as self-review. Attribute independent review only to an actual separate reviewer.
+
 Make code easy for another engineer to understand, change, test, and safely delete. Preserve behavior unless the task explicitly changes it.
 
 ## Quality priorities

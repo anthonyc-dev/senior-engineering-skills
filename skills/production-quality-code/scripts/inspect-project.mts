@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +14,13 @@ type Report = {
   checks: Check[];
   workspaces: boolean;
   otherManifests: string[];
+  projectSignals: {
+    languages: string[];
+    stack: string[];
+    sourceDirectories: string[];
+    testingAndBuild: string[];
+    delivery: string[];
+  };
   warnings: string[];
 };
 
@@ -21,7 +28,20 @@ const lockfiles: Record<string, Manager> = {
   'package-lock.json': 'npm', 'npm-shrinkwrap.json': 'npm',
   'pnpm-lock.yaml': 'pnpm', 'yarn.lock': 'yarn', 'bun.lock': 'bun', 'bun.lockb': 'bun',
 };
-const checkNames = new Set(['verify', 'validate', 'check', 'typecheck', 'type-check', 'lint', 'test', 'test:unit', 'test:integration', 'build']);
+const checkNames = new Set(['verify', 'validate', 'check', 'typecheck', 'type-check', 'lint', 'test', 'test:unit', 'test:integration', 'test:e2e', 'build']);
+const stackPackages = {
+  next: 'Next.js', react: 'React', vue: 'Vue', '@angular/core': 'Angular',
+  '@nestjs/core': 'NestJS', express: 'Express', fastify: 'Fastify',
+  pg: 'PostgreSQL', mysql2: 'MySQL', mongodb: 'MongoDB', '@prisma/client': 'Prisma',
+  '@supabase/supabase-js': 'Supabase', 'next-auth': 'Auth.js', 'better-auth': 'Better Auth',
+  vitest: 'Vitest', jest: 'Jest', '@playwright/test': 'Playwright', cypress: 'Cypress',
+};
+const languageFiles = {
+  'package.json': 'JavaScript', 'tsconfig.json': 'TypeScript', 'pyproject.toml': 'Python',
+  'requirements.txt': 'Python', 'Cargo.toml': 'Rust', 'go.mod': 'Go',
+  'composer.json': 'PHP', 'pubspec.yaml': 'Dart', 'pom.xml': 'Java/JVM',
+  'build.gradle': 'JVM', 'build.gradle.kts': 'Kotlin/JVM', Gemfile: 'Ruby',
+};
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -31,7 +51,11 @@ function readManifest(root: string): Record<string, unknown> {
   const file = join(root, 'package.json');
   if (!existsSync(file)) return {};
   let value: unknown;
-  try { value = JSON.parse(readFileSync(file, 'utf8')); }
+  try {
+    const info = lstatSync(file);
+    if (!info.isFile() || info.size > 1024 * 1024) throw new Error();
+    value = JSON.parse(readFileSync(file, 'utf8'));
+  }
   catch { throw new Error('Cannot read or parse package.json as JSON.'); }
   if (!record(value)) throw new Error('package.json must contain an object.');
   return value;
@@ -74,10 +98,27 @@ export function inspectProject(input: string): Report {
   if (!present('package.json')) warnings.push('No package.json in selected root; use relevant language manifest and project documentation.');
   if (!checks.length) warnings.push('No established check commands; do not invent or claim executed validation.');
   const engine = record(manifest.engines) ? manifest.engines.node : null;
+  const dependencies = [manifest.dependencies, manifest.devDependencies, manifest.peerDependencies].filter(record);
+  const signals = (paths: string[]): string[] => paths.filter(path => {
+    let current = root;
+    for (const segment of path.split('/')) {
+      current = join(current, segment);
+      const info = lstatSync(current, { throwIfNoEntry: false });
+      if (!info || info.isSymbolicLink()) return false;
+    }
+    return true;
+  });
   return {
     root, packageManager, nodeEngine: typeof engine === 'string' && /^[\dv<>=~^*| .x-]+$/i.test(engine) ? engine : null,
     lockfiles: found, scriptNames, checks, workspaces,
     otherManifests: ['pyproject.toml', 'Cargo.toml', 'go.mod', 'composer.json', 'pubspec.yaml'].filter(present),
+    projectSignals: {
+      languages: [...new Set(Object.entries(languageFiles).flatMap(([path, language]) => signals([path]).length ? [language] : []))],
+      stack: Object.entries(stackPackages).filter(([id]) => dependencies.some(group => Object.hasOwn(group, id))).map(([, name]) => name),
+      sourceDirectories: signals(['src', 'app', 'apps', 'packages', 'lib', 'server', 'client', 'tests', 'test', 'docs', 'migrations']),
+      testingAndBuild: signals(['tsconfig.json', 'vite.config.ts', 'vitest.config.ts', 'jest.config.js', 'playwright.config.ts', 'pytest.ini', 'Makefile']),
+      delivery: signals(['Dockerfile', 'compose.yaml', 'compose.yml', 'docker-compose.yml', 'docker-compose.yaml', '.github/workflows', '.gitlab-ci.yml', 'Jenkinsfile', 'vercel.json', 'k8s', 'terraform']),
+    },
     warnings,
   };
 }
@@ -85,7 +126,7 @@ export function inspectProject(input: string): Report {
 function main(): void {
   const args = process.argv.slice(2);
   if (args.length === 1 && args[0] === '--help') {
-    console.log('Usage: node inspect-project.mts [project-directory]\nRead-only project evidence; JSON output. Does not execute scripts, install dependencies, read .env, or scan workspaces recursively. Requires Node.js >=22.20.');
+    console.log('Usage: node inspect-project.mts [project-directory]\nRead-only root metadata, stack hints, and check suggestions in JSON. Does not execute scripts, install dependencies, read .env, or recurse into workspaces. Requires Node.js >=22.20.');
     return;
   }
   if (args.length > 1 || args[0]?.startsWith('-')) throw new Error('Usage: node inspect-project.mts [project-directory]');

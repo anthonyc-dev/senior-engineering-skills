@@ -8,6 +8,26 @@ import { test } from 'node:test';
 
 const inspector = fileURLToPath(new URL('../skills/production-quality-code/scripts/inspect-project.mts', import.meta.url));
 
+test('reports stack and delivery evidence without printing dependency values or CI contents', t => {
+  const result = inspect(t, {
+    'package.json': JSON.stringify({
+      scripts: { 'test:e2e': 'exec-never' },
+      dependencies: { next: 'secret-dependency-reference', pg: '^8', 'next-auth': '^4' },
+    }),
+    'package-lock.json': '{}',
+    'src/main.ts': '',
+    '.github/workflows/build.yml': 'secret-ci-content',
+    Dockerfile: 'secret-container-content',
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.deepEqual(report.projectSignals.stack, ['Next.js', 'PostgreSQL', 'Auth.js']);
+  assert.deepEqual(report.projectSignals.sourceDirectories, ['src']);
+  assert.deepEqual(report.projectSignals.delivery, ['Dockerfile', '.github/workflows']);
+  assert.deepEqual(report.checks, [{ script: 'test:e2e', command: 'npm run test:e2e' }]);
+  assert.doesNotMatch(result.stdout, /secret-|exec-never/);
+});
+
 function inspect(t, files) {
   const root = mkdtempSync(join(tmpdir(), 'project inspection '));
   t.after(() => {

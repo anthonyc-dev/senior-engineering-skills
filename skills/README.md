@@ -50,6 +50,9 @@ Each linked directory contains an installable `SKILL.md`. See [installation and 
 
 | Skill | Use for |
 | --- | --- |
+| [agent-orchestration](agent-orchestration/SKILL.md) | Role selection, dependencies, bounded delegation and evidence handoff |
+| [engineering-memory](engineering-memory/SKILL.md) | Scoped persistent memory and source-backed retrieval |
+| [skill-evaluation](skill-evaluation/SKILL.md) | Repeatable comparisons and approval-controlled improvements |
 | [git](git/SKILL.md) | Git inspection, history, branches, conflicts, and recovery |
 | [github](github/SKILL.md) | Repositories, issues, pull requests, checks, and releases |
 | [adaptive-emoji-communication](adaptive-emoji-communication/SKILL.md) | Restrained, tone-aware emoji use unless plain or formal text is requested |

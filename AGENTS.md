@@ -16,6 +16,8 @@ Use this file as the entry point for every agent working in a project that inclu
 
 Do not blindly load every document body. Index all skill metadata, then use progressive disclosure to keep context focused.
 
+For cross-specialty or dependency-heavy tasks, load `skills/agent-orchestration/SKILL.md`. If prior decisions could change the answer, use `skills/engineering-memory/SKILL.md` when present and restrict automatic retrieval to the current project. For benchmark or skill improvement work, load `skills/skill-evaluation/SKILL.md` before changing official skills.
+
 For authentication, authorization, APIs, sensitive data, file uploads, payments, cloud or CI/CD changes, AI-enabled systems, vulnerability remediation, or security reviews, load `skills/owasp-security-implementation-plan/SKILL.md` alongside the applicable technology skill.
 
 Every implementation response must end with the Task Completion Report sections in this order: Completion Status, Summary, Files Modified, Changes Made, Validation Checklist, Quality Review, Security Review, Performance Review, Remaining Work, and Next Recommended Task. Never replace this report with only “Done,” “Finished,” or “Completed.”
@@ -79,6 +81,9 @@ Every implementation response must end with the Task Completion Report sections 
 
 ### Delivery and collaboration
 
+- `skills/agent-orchestration/SKILL.md`
+- `skills/engineering-memory/SKILL.md`
+- `skills/skill-evaluation/SKILL.md`
 - `skills/git/SKILL.md`
 - `skills/github/SKILL.md`
 

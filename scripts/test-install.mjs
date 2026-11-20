@@ -4,6 +4,7 @@ import { lstatSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, w
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getSupportedAgents } from 'skills';
 import { packRoot, validatePack } from './validate-skills.mjs';
 
 const cli = fileURLToPath(import.meta.resolve('skills/bin/cli.mjs'));
@@ -48,7 +49,8 @@ function testInstall(root, skills, state, selected) {
 }
 
 function testStandaloneTargets(root, skill, state) {
-  const targets = ['codex', 'claude-code', 'cursor', 'gemini-cli', 'github-copilot'];
+  const targets = ['codex', 'claude-code', 'cursor', 'gemini-cli', 'github-copilot', 'opencode'];
+  const registry = getSupportedAgents();
   for (const agent of targets) {
     const project = join(root, `${agent} project`);
     mkdirSync(project);
@@ -56,8 +58,8 @@ function testStandaloneTargets(root, skill, state) {
       type: 'commonjs', packageManager: 'pnpm@9.15.0', scripts: { verify: 'do-not-execute' },
     }));
     runCli(['add', packRoot, '--skill', skill.name, '--agent', agent, '--copy', '--yes', '--json'], project, state);
-    const directory = agent === 'claude-code' ? '.claude' : '.agents';
-    const destination = join(project, directory, 'skills', skill.name);
+    const directory = registry.find(item => item.id === agent).projectSkillsDir;
+    const destination = join(project, directory, skill.name);
     compareFiles(skill.path, destination);
     const listed = JSON.parse(runCli(['list', '--agent', agent, '--json'], project, state));
     assert.deepEqual(listed.map(entry => entry.name), [skill.name]);
@@ -69,6 +71,38 @@ function testStandaloneTargets(root, skill, state) {
     const report = JSON.parse(inspected.stdout);
     assert.equal(report.packageManager.name, 'pnpm');
     assert.deepEqual(report.checks, [{ script: 'verify', command: 'pnpm run verify' }]);
+
+    const advanced = ['agent-orchestration', 'engineering-memory', 'skill-evaluation'];
+    runCli(['add', packRoot, '--skill', ...advanced, '--agent', agent, '--copy', '--yes', '--json'], project, state);
+    for (const name of advanced) {
+      compareFiles(join(packRoot, 'skills', name), join(project, directory, name));
+    }
+    const expanded = JSON.parse(runCli(['list', '--agent', agent, '--json'], project, state));
+    assert.deepEqual(expanded.map(entry => entry.name).sort(), [...advanced, skill.name].sort());
+    const home = join(project, 'isolated home');
+    mkdirSync(home);
+    const memoryScript = join(project, directory, 'engineering-memory', 'scripts', 'memory.mjs');
+    const memoryOptions = {
+      cwd: project, env: { ...process.env, HOME: home, USERPROFILE: home }, encoding: 'utf8', timeout: 10000, windowsHide: true,
+    };
+    const memory = spawnSync(process.execPath, [memoryScript, 'search', 'empty'], memoryOptions);
+    assert.ifError(memory.error);
+    assert.equal(memory.status, 0, `${agent} copied memory helper: ${memory.stderr}`);
+    assert.deepEqual(JSON.parse(memory.stdout), []);
+    const saved = spawnSync(process.execPath, [memoryScript, 'add'], {
+      ...memoryOptions, input: JSON.stringify({ category: 'pattern', text: 'Isolated fixture.', source: 'smoke', confidence: 1 }),
+    });
+    assert.ifError(saved.error);
+    assert.equal(saved.status, 0, `${agent} copied memory write: ${saved.stderr}`);
+    assert.equal(JSON.parse(saved.stdout).status, 'pending');
+    const evidence = join(project, 'evaluation.json');
+    writeFileSync(evidence, JSON.stringify({ suite: 'smoke', client: agent, model: 'fixture', revision: 'fixture', cases: ['empty'], results: {} }));
+    const evaluated = spawnSync(process.execPath, [join(project, directory, 'skill-evaluation', 'scripts', 'evaluate.mjs'), evidence], {
+      cwd: project, encoding: 'utf8', timeout: 10000, windowsHide: true,
+    });
+    assert.ifError(evaluated.error);
+    assert.equal(evaluated.status, 0, `${agent} copied evaluation helper: ${evaluated.stderr}`);
+    assert.equal(JSON.parse(evaluated.stdout).runs[0].counts['NOT TESTED'], 1);
   }
   return targets.length;
 }
@@ -98,7 +132,7 @@ function main() {
     const core = result.skills.find(skill => skill.name === 'production-quality-code');
     assert.ok(core, 'Standalone engineering skill must exist');
     const targets = testStandaloneTargets(root, core, state);
-    console.log(`PASS: ${result.skills.length} skills; ${copiedFiles} identical files; ${subset.length}-skill subset; standalone skill and TypeScript helper verified for ${targets} agent installation targets, including CommonJS host projects and paths with spaces.`);
+    console.log(`PASS: ${result.skills.length} skills; ${copiedFiles} identical files; ${subset.length}-skill subset; standalone core, advanced skills and copied helpers verified for ${targets} agent installation targets.`);
   } finally {
     assert.equal(dirname(root), resolve(tmpdir()), 'Cleanup must remain inside temporary directory');
     rmSync(root, { recursive: true, force: true });

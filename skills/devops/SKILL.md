@@ -11,3 +11,5 @@ description: Design and improve CI/CD, infrastructure automation, release engine
 4. Isolate secrets from code and logs and prefer short-lived workload identity.
 5. Use progressive delivery when risk warrants it and automate health-based rollback safely.
 6. Track lead time, deployment frequency, change failure rate, and recovery time.
+
+For deployment readiness, inspect existing Docker, Compose and CI/CD configuration. Compare required variable names with authorized presence-only evidence. Identify build requirements and inconsistencies, then record the artifact, target, release gates, health probes and rollback steps. Report scope and readiness without printing expanded secrets. Obtain authorization for production changes, including deployment and rollback.

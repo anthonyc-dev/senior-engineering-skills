@@ -1,6 +1,6 @@
 # Senior Engineering Skills
 
-A portable pack of 33 production-oriented agent skills, plus shared rules, workflows, checklists, and domain knowledge. Browse the [skill catalog](skills/README.md).
+A portable pack of 36 production-oriented agent skills, plus shared rules, workflows, checklists, and domain knowledge. Browse the [skill catalog](skills/README.md).
 
 Works with Agent Skills-compatible clients, including Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot. Installation support does not mean every client has been tested on real coding tasks.
 
@@ -87,7 +87,21 @@ Our [project-inspection helper](skills/production-quality-code/scripts/inspect-p
 
 The helper emits JSON containing package-manager evidence, safe script names, configured check suggestions, workspace warnings, and known language-manifest names. It never executes scripts or prints their bodies, reads `.env`, installs dependencies, or chooses a manager when evidence conflicts. Review project instructions, CI, and script bodies before executing any suggested command.
 
-Local checks verify standalone copy installation and execution of the bundled helper for Codex, Claude Code, Cursor, Gemini CLI, and GitHub Copilot target directories. They do not launch those five agent applications. Compatibility depends on an agent supporting and loading Agent Skills; arbitrary AI chatbots and guaranteed compliance are outside that claim. [Evaluation scope and evidence](docs/evaluations/production-quality-code.md) distinguish simulated instruction review from actual tool tests.
+Local checks verify standalone copy installation and execution of copied helpers in Codex, Claude Code, Cursor, Gemini CLI, GitHub Copilot, and OpenCode target directories. Client activation and compliance require live client tests. See the [advanced skills evaluation](docs/evaluations/advanced-skills.md) and [original engineering core evaluation](docs/evaluations/production-quality-code.md).
+
+### Use the advanced workflows
+
+```sh
+npx skills add anthonyc-dev/senior-engineering-skills --skill engineering-memory agent-orchestration skill-evaluation --agent codex --copy
+```
+
+Install a GitHub revision containing the new skills, or use the absolute path to this checkout for local testing. Full framework installs include the new workflows, existing guidance, and the native framework entry.
+
+- Ask the client to use `engineering-memory` from the project root. Resolve the helper path from the installed skill, then run `node <memory-script> search "checkout reconciliation"`. Follow the [memory operations guide](skills/engineering-memory/references/operations.md) for approval, scopes, backup and deletion.
+- Ask the client to use `agent-orchestration` for a cross-specialty task. It uses authorized client tools and supports sequential execution when delegation is unavailable.
+- Ask the client to use `skill-evaluation` with the [case protocol](skills/skill-evaluation/references/protocol.md). Run `node <evaluate-script> baseline.json candidate.json` to compare recorded evidence under matching conditions.
+
+The helpers require Node.js 22.20+ and use its standard library, including SQLite for memory. Each skill documents manual and client-native fallbacks. Memory stays under the current OS user's profile. Approve sharing explicitly and keep exported backups outside project repositories.
 
 ### Repository layouts and local installation
 
@@ -161,7 +175,7 @@ For manual setup instead, copy the guidance directories into the project's `.ai/
 Read and follow `.ai/AGENTS.md`.
 ```
 
-Full mode registers the single native `senior-engineering-framework` entry, not all 33 individual skill commands. Run skills mode too if you want each individual skill in the client's native discovery/command list. Installing all framework files does not mean injecting every document into each prompt.
+Full mode registers the single native `senior-engineering-framework` entry. Run skills mode too if you want individual skill commands in the client's native discovery list. The framework loads task-relevant guidance on demand.
 
 Registry/path support is installation compatibility, not proof that all 79 applications or models follow the instructions. Tests exercise all registry destinations, shared-path deduplication, and safe reruns without launching those clients. An agent must support local skills or be configured to read the guidance. Cloud chatbots with no project file access require a separate upload/context integration; no local installer can force that support.
 
@@ -202,7 +216,7 @@ Commit `package.json` and `package-lock.json`; do not commit `node_modules/`. Co
 | `npm run typecheck` | Strict TypeScript check of the bundled project-inspection helper |
 | `npm run inspect:project -- "<project-root>"` | Read-only project metadata and configured check suggestions as JSON |
 | `npm test` | Skill/tool regressions plus template completeness, links, TS/TSX syntax, and CI structure |
-| `npm run test:install` | Full/subset installs plus standalone core/helper checks for five agent targets |
+| `npm run test:install` | Full/subset installs plus standalone core, advanced skill, and copied helper checks for six agent targets |
 | `npm run test:package` | Checks actual npm distribution contents and excludes caches/development tests |
 | `npm run framework -- --agent claude-code --target "<project>" --dry-run` | Previews full installation into an existing project |
 | `npm run check` | Runs metadata validation, static type checks, regressions, packaging checks, and installation smoke test |

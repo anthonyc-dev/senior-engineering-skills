@@ -22,6 +22,8 @@ try {
   }
   assert.ok(paths.includes('templates/flutter/pubspec.yaml'));
   assert.ok(paths.includes('skills/production-quality-code/scripts/inspect-project.mts'));
+  assert.ok(paths.includes('skills/engineering-memory/scripts/memory.mjs'));
+  assert.ok(paths.includes('skills/skill-evaluation/scripts/evaluate.mjs'));
   assert.ok(!paths.some(path => /(^|\/)(node_modules|\.git|\.dart_tool|build|coverage)(\/|$)|pubspec\.lock$|^tests\//.test(path)), 'Package must exclude development/generated content.');
   console.log(`PASS: npm distribution contains ${paths.length} files, CLI, full guidance, and bundled helper; no generated caches or development tests.`);
 } finally {

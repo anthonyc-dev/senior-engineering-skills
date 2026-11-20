@@ -15,13 +15,17 @@ Act as a senior engineer: establish the actual contract, choose the smallest com
 4. Trace the exact failing request or behavior before fixing a bug. A direct database probe does not prove an application request works.
 5. Identify available tools and permissions. Use this agent's file, search, execution, and review capabilities; no particular tool name or skill-invocation API is required. If execution is unavailable, report that limit and provide reviewable guidance without claiming applied changes or passing checks.
 
+For debugging, start from a sanitized trace or failing request. Trace evidence across affected boundaries, state which root causes are hypotheses or confirmed, and verify an authorized fix through the original entry point. After code changes, compare setup commands, API contracts, schema documentation and decisions against the source of truth and update affected docs within scope.
+
 Optional read-only helper: [inspect-project.mts](scripts/inspect-project.mts), requiring Node.js >=22.20. Resolve its path relative to this skill directory, not the application's working directory:
 
 ```sh
 node scripts/inspect-project.mts "<project-root>"
 ```
 
-It emits JSON evidence and configured check suggestions, never executes them. Inspect script definitions before executing suggestions. It reads only root manifest metadata and checks known file names; it does not read `.env`, install tools, or recurse into workspaces. Inspect the affected workspace separately. Without Node.js or shell access, read the same project files through available tools; the helper is optional. Non-JavaScript projects keep their own tools and commands.
+It emits JSON evidence, stack and delivery signals, and configured check suggestions. Inspect script definitions before executing suggestions. The helper reads only root manifest metadata and checks known paths. It never reads `.env`, executes project scripts, installs tools, or recurses into workspaces. Without Node.js or shell access, inspect the same project files through available tools.
+
+For a project intelligence request, stay read-only. Map relevant source and workspace boundaries, languages, dependency manifests, framework entry points, API contracts, data stores, and authentication and authorization paths. Inspect configured test, build, and delivery paths. Exclude generated output, binaries, dependency directories and secret-bearing files. Cite the files that support each conclusion and label inferred stack hints. Check dependency freshness or advisories only with authorized trusted metadata or available scanners. Report structure, runtime, architecture, identity/data boundaries, delivery, risks and unknowns. Mark uncovered workspaces and systems explicitly.
 
 ## 2. Bound the change
 
