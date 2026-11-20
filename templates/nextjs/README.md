@@ -4,6 +4,6 @@ Copy [error.tsx](error.tsx) to the affected App Router segment, such as `app/acc
 
 This handles unexpected rendering errors caught by that segment's boundary. It does not replace validation/error results for expected business failures, nor handle errors in the same segment's layout. Root-layout failures require the framework's separate global-error convention.
 
-Verify the installed Next.js version's error-boundary contract. Run the consuming app's type check/build and browser test for thrown errors, safe visible copy, keyboard retry, and recovery. Root skill-pack checks verify TSX syntax only.
+The source checkout type-checks this file and tests its rendered markup. Verify the installed Next.js version's boundary contract in the consuming app. Run its build and browser tests for thrown errors, keyboard retry and recovery.
 
 Reference: [Next.js error file convention](https://nextjs.org/docs/app/api-reference/file-conventions/error).

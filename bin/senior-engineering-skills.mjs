@@ -105,7 +105,8 @@ function sourceFiles(source, path) {
     if (['.git', '.npmignore', 'node_modules', '.dart_tool', 'build', 'coverage', '__pycache__'].includes(entry.name)) continue;
     if (entry.name.startsWith('.env') || /\.(pem|key|p12|pfx)$/i.test(entry.name)) continue;
     const file = join(path, entry.name);
-    if (relative(source, file).split(sep).join('/') === 'templates/flutter/pubspec.lock') continue;
+    const sourcePath = relative(source, file).split(sep).join('/');
+    if (sourcePath === 'templates/flutter/pubspec.lock' || /^templates\/aspnet-core\/(bin|obj)$/.test(sourcePath)) continue;
     if (entry.isSymbolicLink()) throw new Error(`Symlink source refused: ${file}`);
     if (entry.isDirectory()) files.push(...sourceFiles(source, file));
     else if (entry.isFile()) files.push(file);
@@ -153,10 +154,14 @@ function plan(options) {
     if (!previous) writes.push({ path, content, previous });
   }
   const ignorePath = join(destination, '.gitignore');
-  const ignoreContent = Buffer.from('templates/flutter/.dart_tool/\ntemplates/flutter/build/\ntemplates/flutter/pubspec.lock\n');
+  const legacyIgnore = 'templates/flutter/.dart_tool/\ntemplates/flutter/build/\ntemplates/flutter/pubspec.lock\n';
+  const ignoreContent = Buffer.from(legacyIgnore
+    + 'templates/aspnet-core/bin/\ntemplates/aspnet-core/obj/\ntemplates/python/__pycache__/\n');
   const previousIgnore = existing(target, ignorePath);
-  if (previousIgnore && !previousIgnore.equals(ignoreContent)) throw new Error(`Framework file conflict: ${ignorePath}`);
-  if (!previousIgnore) writes.push({ path: ignorePath, content: ignoreContent, previous: null });
+  if (previousIgnore && !previousIgnore.equals(ignoreContent) && !previousIgnore.equals(Buffer.from(legacyIgnore))) {
+    throw new Error(`Framework file conflict: ${ignorePath}`);
+  }
+  if (!previousIgnore?.equals(ignoreContent)) writes.push({ path: ignorePath, content: ignoreContent, previous: previousIgnore });
   const instructionFiles = new Map(agents.map(agent => [loaderPath(agent), agent === 'cursor']));
   const skillDirectories = new Set(registeredAgents.filter(agent => agents.includes(agent.id)).map(agent => agent.projectSkillsDir));
   for (const directory of skillDirectories) {

@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { compileFunction } from 'node:vm';
 import { parse } from 'yaml';
 import ts from 'typescript';
 
 const root = fileURLToPath(new URL('../templates/', import.meta.url));
-const categories = ['docker', 'documentation', 'flutter', 'github-actions', 'nestjs', 'nextjs', 'prompts', 'react', 'sql'];
+const categories = ['aspnet-core', 'docker', 'documentation', 'express', 'flutter', 'github-actions', 'go', 'nestjs', 'nextjs', 'prompts', 'python', 'react', 'sql'];
 
 test('every template category includes usage instructions and a usable artifact', () => {
   assert.deepEqual(readdirSync(root, { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name).sort(), categories);
@@ -33,15 +35,53 @@ test('template documentation links resolve locally', () => {
   }
 });
 
-test('TypeScript and TSX templates have valid syntax', () => {
-  for (const file of ['react/AsyncContent.tsx', 'nextjs/error.tsx', 'nestjs/page-query.dto.ts']) {
-    const result = ts.transpileModule(readFileSync(join(root, file), 'utf8'), {
-      fileName: file,
-      reportDiagnostics: true,
-      compilerOptions: { target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.ReactJSX, experimentalDecorators: true },
-    });
-    const errors = (result.diagnostics ?? []).filter(item => item.category === ts.DiagnosticCategory.Error);
-    assert.deepEqual(errors.map(item => ts.flattenDiagnosticMessageText(item.messageText, '\n')), [], file);
+function loadTemplate(relativePath) {
+  const filename = join(root, relativePath);
+  const { outputText } = ts.transpileModule(readFileSync(filename, 'utf8'), {
+    fileName: filename,
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX,
+      experimentalDecorators: true, emitDecoratorMetadata: true,
+    },
+  });
+  const module = { exports: {} };
+  const evaluate = compileFunction(outputText, ['require', 'module', 'exports'], { filename });
+  evaluate(createRequire(filename), module, module.exports);
+  return module.exports;
+}
+
+test('React states and the Next.js error boundary render safe markup', async () => {
+  const { createElement } = await import('react');
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const { AsyncContent } = loadTemplate('react/AsyncContent.tsx');
+  const { default: ErrorBoundary } = loadTemplate('nextjs/error.tsx');
+  const renderState = (state, onRetry) => renderToStaticMarkup(createElement(AsyncContent, {
+    state, onRetry, children: data => createElement('strong', null, data),
+  }));
+  assert.match(renderState({ status: 'loading' }), /role="status"/);
+  assert.match(renderState({ status: 'empty' }), /No content yet/);
+  assert.match(renderState({ status: 'ready', data: 'Example' }), /<strong>Example<\/strong>/);
+  assert.doesNotMatch(renderState({ status: 'error' }), /<button/);
+  assert.match(renderState({ status: 'error' }, () => {}), /<button type="button">Try again/);
+  const error = renderToStaticMarkup(createElement(ErrorBoundary, {
+    error: new Error('private details'), reset() {},
+  }));
+  assert.match(error, /role="alert"/);
+  assert.match(error, /<button type="button">Try again/);
+  assert.doesNotMatch(error, /private details/);
+});
+
+test('NestJS query DTO transforms numeric strings and rejects invalid pages and limits', async () => {
+  await import('reflect-metadata');
+  const { plainToInstance } = await import('class-transformer');
+  const { validateSync } = await import('class-validator');
+  const { PageQueryDto } = loadTemplate('nestjs/page-query.dto.ts');
+  assert.deepEqual({ ...plainToInstance(PageQueryDto, {}) }, { page: 1, limit: 20 });
+  const query = plainToInstance(PageQueryDto, { page: '2', limit: '50' });
+  assert.deepEqual({ ...query }, { page: 2, limit: 50 });
+  assert.deepEqual(validateSync(query), []);
+  for (const params of [{ page: '0' }, { limit: '101' }, { page: '1.5' }, { page: ['1', '2'] }]) {
+    assert.ok(validateSync(plainToInstance(PageQueryDto, params)).length > 0, JSON.stringify(params));
   }
 });
 

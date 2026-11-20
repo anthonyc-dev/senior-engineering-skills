@@ -19,6 +19,8 @@ function fixture(t) {
   write(join(source, 'node_modules/private.txt'), 'never copy');
   write(join(source, 'templates/flutter/.dart_tool/package_config.json'), 'machine paths');
   write(join(source, 'templates/flutter/pubspec.lock'), 'local lock');
+  write(join(source, 'templates/aspnet-core/bin/Debug/generated.dll'), 'generated binary');
+  write(join(source, 'templates/aspnet-core/obj/project.assets.json'), 'machine paths');
   write(join(source, '.env'), 'private');
   return { root, source, target, write };
 }
@@ -32,6 +34,8 @@ test('full mode includes all guidance categories but excludes development/genera
   assert.ok(!existsSync(join(target, '.ai/.env')));
   assert.ok(!existsSync(join(target, '.ai/templates/flutter/.dart_tool')));
   assert.ok(!existsSync(join(target, '.ai/templates/flutter/pubspec.lock')));
+  assert.ok(!existsSync(join(target, '.ai/templates/aspnet-core/bin')));
+  assert.ok(!existsSync(join(target, '.ai/templates/aspnet-core/obj')));
   assert.match(readFileSync(join(target, 'AGENTS.md'), 'utf8'), /\.ai\/AGENTS\.md/);
   assert.match(readFileSync(join(target, 'CLAUDE.md'), 'utf8'), /\.ai\/AGENTS\.md/);
 });
@@ -45,6 +49,17 @@ test('preserves existing project instructions and reruns without duplicate block
   const again = installFramework({ source, target, agents: ['claude-code'] });
   assert.equal(readFileSync(join(target, 'CLAUDE.md'), 'utf8'), first);
   assert.equal(again.filesToWrite.length, 0);
+});
+
+test('upgrades the generated ignore file for template outputs', t => {
+  const { source, target, write } = fixture(t);
+  const file = join(target, '.ai', '.gitignore');
+  const prior = 'templates/flutter/.dart_tool/\ntemplates/flutter/build/\ntemplates/flutter/pubspec.lock\n';
+  write(file, prior);
+  installFramework({ source, target, agents: ['codex'] });
+  assert.equal(readFileSync(file, 'utf8'), prior
+    + 'templates/aspnet-core/bin/\ntemplates/aspnet-core/obj/\ntemplates/python/__pycache__/\n');
+  assert.deepEqual(installFramework({ source, target, agents: ['codex'] }).filesToWrite, []);
 });
 
 test('conflicting guidance fails before copying or activating anything', t => {

@@ -21,10 +21,14 @@ try {
     assert.ok(paths.some(path => path.startsWith(`${directory}/`)), `Missing packaged guidance directory: ${directory}`);
   }
   assert.ok(paths.includes('templates/flutter/pubspec.yaml'));
+  for (const artifact of ['aspnet-core/HealthApi.csproj', 'aspnet-core/Program.cs', 'express/server.mjs', 'go/go.mod', 'go/main.go', 'python/app.py', 'tsconfig.json']) {
+    assert.ok(paths.includes(`templates/${artifact}`), `Missing packaged template: ${artifact}`);
+  }
   assert.ok(paths.includes('skills/production-quality-code/scripts/inspect-project.mts'));
   assert.ok(paths.includes('skills/engineering-memory/scripts/memory.mjs'));
   assert.ok(paths.includes('skills/skill-evaluation/scripts/evaluate.mjs'));
   assert.ok(!paths.some(path => /(^|\/)(node_modules|\.git|\.dart_tool|build|coverage)(\/|$)|pubspec\.lock$|^tests\//.test(path)), 'Package must exclude development/generated content.');
+  assert.ok(!paths.some(path => /^templates\/aspnet-core\/(bin|obj)\/|^templates\/python\/__pycache__\//.test(path)), 'Package must exclude ASP.NET and Python build artifacts.');
   console.log(`PASS: npm distribution contains ${paths.length} files, CLI, full guidance, and bundled helper; no generated caches or development tests.`);
 } finally {
   assert.equal(dirname(temporary), resolve(tmpdir()));

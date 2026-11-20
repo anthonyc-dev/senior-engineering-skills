@@ -4,7 +4,7 @@ A portable pack of 36 production-oriented agent skills, plus shared rules, workf
 
 Works with Agent Skills-compatible clients, including Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot. Installation support does not mean every client has been tested on real coding tasks.
 
-The [template catalog](templates/README.md) contains practical starter files for all nine template categories. Each category documents its prerequisites, destination, safety constraints, and validation steps. Top-level templates are part of the full framework checkout, not individual skill installations.
+The [template catalog](templates/README.md) contains practical starter files for 13 template categories. Each category documents its prerequisites, destination, safety constraints, and validation steps. Top-level templates ship with the full framework.
 
 ## Install skills with Vercel's CLI
 
@@ -161,7 +161,7 @@ For other registered agents and `universal`, the installer adds the portable roo
 
 To install activation files for every registered target at once, use `--agent '*'`. This creates many agent directories, so preview with `--dry-run` first. Ordinary installations should select only the client(s) you use. `custom` is a separate explicit option and is not included in `'*'`.
 
-The installer copies skills, knowledge, prompts, instructions, rules, standards, workflows, checklists, templates, glossary, adapters, examples, and documentation into `.ai/`. It includes root framework instructions and version information, excluding development tooling, dependencies, Git metadata, private-key/environment file names, and generated Flutter state. It does not install application dependencies, modify the app's package manifest, activate template CI workflows, or execute application scripts.
+The installer copies skills, knowledge, prompts, instructions, rules, standards, workflows, checklists, templates, glossary, adapters, examples, and documentation into `.ai/`. It includes root framework instructions and version information. Distribution excludes development tooling, dependencies, Git metadata, private-key and environment files, and generated template artifacts. It leaves app dependencies, package manifests and CI activation to the consuming project.
 
 Existing agent instructions keep their contents; one marked loading block is appended. The block gives existing project instructions precedence and asks the agent to load only relevant guidance. Identical reruns add no duplicate block. Existing different `.ai` files, edited/incomplete managed blocks, non-UTF-8 instruction files, symlink destinations, and overlapping source/destination paths cause a failure before writes. The dedicated Cursor rule refuses an unrelated existing file of the same name.
 
@@ -213,9 +213,9 @@ Commit `package.json` and `package-lock.json`; do not commit `node_modules/`. Co
 | --- | --- |
 | `npm run validate` | Read-only checks of YAML metadata, skill names, catalog completeness, documented companions, and local references |
 | `npm run validate -- --json` | The same checks as structured JSON; exits nonzero on failure |
-| `npm run typecheck` | Strict TypeScript check of the bundled project-inspection helper |
+| `npm run typecheck` | Strict TypeScript checks for framework tooling and the NestJS, Next.js and React templates |
 | `npm run inspect:project -- "<project-root>"` | Read-only project metadata and configured check suggestions as JSON |
-| `npm test` | Skill/tool regressions plus template completeness, links, TS/TSX syntax, and CI structure |
+| `npm test` | Skill/tool regressions, template render and DTO tests, catalog links, and CI structure |
 | `npm run test:install` | Full/subset installs plus standalone core, advanced skill, and copied helper checks for six agent targets |
 | `npm run test:package` | Checks actual npm distribution contents and excludes caches/development tests |
 | `npm run framework -- --agent claude-code --target "<project>" --dry-run` | Previews full installation into an existing project |

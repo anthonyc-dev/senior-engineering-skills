@@ -6,6 +6,6 @@ Enable the app's shared `ValidationPipe` with `transform: true`, `whitelist: tru
 
 Apply stable ordering in the repository query. For large mutable datasets use the project's cursor-pagination contract rather than expensive offsets. This DTO does not authenticate users or scope resources; keep those policies in the existing guards/application/repository boundaries.
 
-Run the app's type check and API tests covering defaults, numeric strings, zero, negatives, fractions, excessive limits, unknown fields, repeated query parameters, and unauthorized access. Syntax validation in the skill pack is not Nest runtime validation.
+From the source checkout, `npm run typecheck` checks the DTO and `npm test` exercises it with the real transformation and validation libraries. Run the consuming app's API tests to verify its pipe setup, unknown fields, repeated query parameters and authorization.
 
 Reference: [Nest validation](https://docs.nestjs.com/techniques/validation).
